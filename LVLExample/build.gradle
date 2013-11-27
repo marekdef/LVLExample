@@ -1,0 +1,29 @@
+buildscript {
+    repositories {
+        mavenCentral()
+    }
+    dependencies {
+        classpath 'com.android.tools.build:gradle:0.6.+'
+    }
+}
+apply plugin: 'android'
+
+repositories {
+    mavenCentral()
+}
+
+android {
+    compileSdkVersion 19
+    buildToolsVersion "19.0.0"
+
+    defaultConfig {
+        minSdkVersion 7
+        targetSdkVersion 19
+    }
+}
+
+dependencies {
+	compile 'com.android.support:appcompat-v7:+'
+    compile files('/home/made/android-sdk-linux/extras/google/play_licensing/library/bin/classes.jar')
+    compile 'org.slf4j:slf4j-android:1.6.1-RC1'
+}

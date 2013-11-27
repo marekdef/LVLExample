@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="ProjectModuleManager">
+    <modules>
+      <module fileurl="file://$PROJECT_DIR$/LVLExample/LVLExample.iml" filepath="$PROJECT_DIR$/LVLExample/LVLExample.iml" />
+      <module fileurl="file://$PROJECT_DIR$/LVLExampleProject.iml" filepath="$PROJECT_DIR$/LVLExampleProject.iml" />
+    </modules>
+  </component>
+</project>
+
