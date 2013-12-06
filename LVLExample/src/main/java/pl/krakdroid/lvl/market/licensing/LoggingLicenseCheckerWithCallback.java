@@ -11,10 +11,10 @@ import com.google.android.vending.licensing.Policy;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class MyLicenseChecker extends LicenseChecker {
-    private static final Logger LOGGER = LoggerFactory.getLogger(MyLicenseChecker.class.getSimpleName());
+public class LoggingLicenseCheckerWithCallback extends LicenseChecker {
+    private static final Logger LOGGER = LoggerFactory.getLogger(LoggingLicenseCheckerWithCallback.class.getSimpleName());
 
-    public MyLicenseChecker(Context context, Policy policy, String encodedPublicKey) {
+    public LoggingLicenseCheckerWithCallback(Context context, Policy policy, String encodedPublicKey) {
         super(context, policy, encodedPublicKey);
     }
 
