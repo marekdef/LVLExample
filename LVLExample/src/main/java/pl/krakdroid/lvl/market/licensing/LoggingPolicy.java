@@ -18,15 +18,15 @@ public class LoggingPolicy implements Policy {
 
     @Override
     public void processServerResponse(int i, ResponseData responseData) {
-
-        LOGGER.debug("{}", i);
-        LOGGER.debug("{}", responseData);
+        LOGGER.debug("processServerResponse({},{})", i, responseData);
         policy.processServerResponse(i, responseData);
     }
 
     @Override
     public boolean allowAccess() {
-        LOGGER.debug("allowAccess");
-        return policy.allowAccess();
+
+        final boolean allowAccess = policy.allowAccess();
+        LOGGER.debug("allowAccess returns{}", allowAccess);
+        return allowAccess;
     }
 }

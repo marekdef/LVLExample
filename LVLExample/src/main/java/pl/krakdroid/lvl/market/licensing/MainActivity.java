@@ -16,8 +16,8 @@
 
 package pl.krakdroid.lvl.market.licensing;
 
-import com.google.android.vending.licensing.LicenseChecker;
-import com.google.android.vending.licensing.LicenseCheckerCallback;
+import static com.google.android.vending.licensing.LicenseCheckerCallback.*;
+
 import com.google.android.vending.licensing.Policy;
 import com.google.android.vending.licensing.StrictPolicy;
 
@@ -25,17 +25,14 @@ import android.app.Activity;
 import android.graphics.Color;
 import android.os.Bundle;
 import android.os.Handler;
+import android.os.Message;
 import android.provider.Settings.Secure;
 import android.view.View;
-import android.widget.Button;
 import android.widget.ProgressBar;
 import android.widget.TextView;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import pl.krakdroid.lvl.market.licensing.fake.FakePolicy;
-import static com.google.android.vending.licensing.LicenseCheckerCallback.*;
+
 /**
  * Welcome to the world of Android Market licensing. We're so glad to have you
  * onboard!
@@ -71,24 +68,20 @@ public class MainActivity extends Activity {
     private TextView mStatusText;
     private TextView mStatusTextBad;
     private TextView mStatusTextFake;
-    private TextView mStatusTextFakePolicy;
 
-    private Button mCheckLicenseButton;
-
-    private LicenseCheckerCallback mLicenseCheckerCallback;
-    private LicenseChecker mChecker;
-    // A handler on the UI thread.
-    private Handler mHandler;
-    private LicenseChecker mFakeChecker;
-    private LicenseCheckerCallback mFakeLicenceCheckerCallback;
-    private LicenseChecker mBadChecker;
-    private LicenseCheckerCallback mBadLicenceCheckerCallback;
-    private int licenceResults;
+    private LoggingLicenseCheckerWithCallback mChecker;
+    private LoggingLicenseCheckerWithCallback mFakeChecker;
+    private LoggingLicenseCheckerWithCallback mBadChecker;
 
     private ProgressBar mStatusProgress;
     private ProgressBar mStatusProgressBad;
     private ProgressBar mStatusProgressFake;
+
     private FakePolicy fakePolicy;
+    private TextView mStatusTextFakePolicy;
+    private View buttonNormal;
+    private View buttonFake;
+    private View buttonBad;
 
 
     @Override
@@ -97,6 +90,7 @@ public class MainActivity extends Activity {
         setContentView(R.layout.main);
 
         mStatusText = (TextView) findViewById(R.id.status_text);
+
         mStatusTextBad = (TextView) findViewById(R.id.status_text_bad);
         mStatusTextFake = (TextView) findViewById(R.id.status_text_fake);
         mStatusTextFakePolicy = (TextView) findViewById(R.id.status_text_fake2);
@@ -105,204 +99,147 @@ public class MainActivity extends Activity {
         mStatusProgressBad = (ProgressBar) findViewById(R.id.progressBar_bad);
         mStatusProgressFake = (ProgressBar) findViewById(R.id.progressBar_fake);
 
-        mCheckLicenseButton = (Button) findViewById(R.id.check_license_button);
-        mCheckLicenseButton.setOnClickListener(new View.OnClickListener() {
-            public void onClick(View view) {
-                doCheck();
-            }
-        });
 
-        mHandler = new Handler();
+
 
         // Try to use more data here. ANDROID_ID is a single point of attack.
         String deviceId = Secure.getString(getContentResolver(), Secure.ANDROID_ID);
 
-        // Library calls this when it's done.
-        mLicenseCheckerCallback = new MyLicenseCheckerCallback();
-        mFakeLicenceCheckerCallback = new FakeLicenseCheckerCallback();
-        mBadLicenceCheckerCallback = new BadKeyLicenceCheckerCallback();
-
         // Construct the LicenseChecker with a policy.
 //      Policy internalPolicy = new ServerManagedPolicy(this, new AESObfuscator(SALT, getPackageName(), deviceId));
         Policy internalPolicy = new StrictPolicy();
-        Policy policy = new MyPolicy(internalPolicy);
+        Policy policy = new LoggingPolicy(internalPolicy);
+
         fakePolicy = new FakePolicy();
-        mChecker = new MyLicenseChecker(this, policy, BASE64_PUBLIC_KEY);
 
-        mFakeChecker = new LicenseChecker(this, fakePolicy, BASE64_PUBLIC_KEY);
 
-        mBadChecker = new MyLicenseChecker(this, policy, BASE64_PUBLIC_KEY_DIFFERENT_APP);
-    }
-
-    private void doCheck() {
-        licenceResults = 3;
-        mCheckLicenseButton.setEnabled(false);
-        setProgressBarIndeterminateVisibility(true);
-
-        mStatusText.setText(R.string.checking_license);
-        mStatusTextBad.setText(R.string.checking_license);
-        mStatusTextFake.setText(R.string.checking_license);
-
-        mStatusProgress.setVisibility(View.VISIBLE);
-        mStatusProgressFake.setVisibility(View.VISIBLE);
-        mStatusProgressBad.setVisibility(View.VISIBLE);
-
-        mChecker.checkAccess(mLicenseCheckerCallback);
-        mFakeChecker.checkAccess(mFakeLicenceCheckerCallback);
-        mBadChecker.checkAccess(mBadLicenceCheckerCallback);
-    }
-
-    private void displayResult(final TextView text, final ProgressBar progressBar, final String result, final int color) {
-        mHandler.post(new Runnable() {
-            public void run() {
-                text.setBackgroundColor(color);
-                text.setText(result);
-                progressBar.setVisibility(View.GONE);
-                if(--licenceResults == 0) {
-                    mCheckLicenseButton.setEnabled(true);
-                    mStatusTextFakePolicy.setText(String.format("%b %b", fakePolicy.isWasProcessServerResponseCalled(),fakePolicy.isWasAllowAccessCalled()));
+        mChecker = new LoggingLicenseCheckerWithCallback(
+                new Handler() {
+                    @Override
+                    public void handleMessage(Message msg) {
+                        switch(msg.what) {
+                            case LoggingLicenseCheckerWithCallback.CHECKING:
+                                mStatusProgress.setVisibility(View.VISIBLE);
+                                mStatusProgress.setIndeterminate(true);
+                                break;
+                            case LoggingLicenseCheckerWithCallback.ALLOW:
+                                buttonNormal.setEnabled(true);
+                                mStatusProgress.setVisibility(View.GONE);
+                                mStatusText.setBackgroundColor(Color.GREEN);
+                                mStatusText.setText(getString(R.string.allow));
+                                break;
+                            case LoggingLicenseCheckerWithCallback.DISALLOW:
+                                buttonNormal.setEnabled(true);
+                                mStatusProgress.setVisibility(View.GONE);
+                                mStatusText.setBackgroundColor(Color.RED);
+                                mStatusText.setText(getString(R.string.dont_allow));
+                                break;
+                            case LoggingLicenseCheckerWithCallback.ERROR:
+                                buttonNormal.setEnabled(true);
+                                mStatusProgress.setVisibility(View.GONE);
+                                mStatusText.setBackgroundColor(Color.MAGENTA);
+                                mStatusText.setText(getString(R.string.application_error, msg.arg1));
+                                break;
+                        }
+                    }
                 }
+                , this, policy, BASE64_PUBLIC_KEY);
+
+        buttonNormal = findViewById(R.id.buttonNormal);
+        buttonNormal.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                buttonNormal.setEnabled(false);
+                mChecker.checkAccess();
+            }
+        });
+
+        mFakeChecker = new LoggingLicenseCheckerWithCallback(
+                new Handler() {
+                    @Override
+                    public void handleMessage(Message msg) {
+                        switch(msg.what) {
+                            case LoggingLicenseCheckerWithCallback.CHECKING:
+                                mStatusProgressFake.setVisibility(View.VISIBLE);
+                                mStatusProgressFake.setIndeterminate(true);
+                                break;
+                            case LoggingLicenseCheckerWithCallback.ALLOW:
+                                buttonFake.setEnabled(true);
+                                mStatusProgressFake.setVisibility(View.GONE);
+                                mStatusTextFake.setBackgroundColor(Color.GREEN);
+                                mStatusTextFake.setText(getString(R.string.allow));
+                                mStatusTextFakePolicy.setText(String.format("%b %b %b", fakePolicy.isWasProcessServerResponseCalled(), fakePolicy.isWasAllowAccessCalled(), fakePolicy.allowAccess()));
+                                break;
+                            case LoggingLicenseCheckerWithCallback.DISALLOW:
+                                buttonFake.setEnabled(true);
+                                mStatusProgressFake.setVisibility(View.GONE);
+                                mStatusTextFake.setBackgroundColor(Color.RED);
+                                mStatusTextFake.setText(getString(R.string.dont_allow));
+                                mStatusTextFakePolicy.setText(String.format("%b %b %b", fakePolicy.isWasProcessServerResponseCalled(), fakePolicy.isWasAllowAccessCalled(), fakePolicy.allowAccess()));
+                                break;
+                            case LoggingLicenseCheckerWithCallback.ERROR:
+                                buttonFake.setEnabled(true);
+                                mStatusProgressFake.setVisibility(View.GONE);
+                                mStatusTextFake.setBackgroundColor(Color.MAGENTA);
+                                mStatusTextFake.setText(getString(R.string.application_error, msg.arg1));
+                                mStatusTextFakePolicy.setText(String.format("%b %b %b", fakePolicy.isWasProcessServerResponseCalled(), fakePolicy.isWasAllowAccessCalled(), fakePolicy.allowAccess()));
+                                break;
+                        }
+                    }
+                }, this, new LoggingPolicy(fakePolicy), BASE64_PUBLIC_KEY);
+
+        buttonFake = findViewById(R.id.buttonFake);
+        buttonFake.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                buttonFake.setEnabled(false);
+                mFakeChecker.checkAccess();
+            }
+        });
+
+        mBadChecker = new LoggingLicenseCheckerWithCallback(
+                new Handler() {
+                    @Override
+                    public void handleMessage(Message msg) {
+                        switch(msg.what) {
+                            case LoggingLicenseCheckerWithCallback.CHECKING:
+                                mStatusProgressBad.setVisibility(View.VISIBLE);
+                                mStatusProgressBad.setIndeterminate(true);
+                                break;
+                            case LoggingLicenseCheckerWithCallback.ALLOW:
+                                buttonBad.setEnabled(true);
+                                mStatusProgressBad.setVisibility(View.GONE);
+                                mStatusTextBad.setBackgroundColor(Color.GREEN);
+                                mStatusTextBad.setText(getString(R.string.allow));
+                                break;
+                            case LoggingLicenseCheckerWithCallback.DISALLOW:
+                                buttonBad.setEnabled(true);
+                                mStatusProgressBad.setVisibility(View.GONE);
+                                mStatusTextBad.setBackgroundColor(Color.RED);
+                                mStatusTextBad.setText(getString(R.string.dont_allow));
+                                break;
+                            case LoggingLicenseCheckerWithCallback.ERROR:
+                                buttonBad.setEnabled(true);
+                                mStatusProgressBad.setVisibility(View.GONE);
+                                mStatusTextBad.setBackgroundColor(Color.MAGENTA);
+                                mStatusTextBad.setText(getString(R.string.application_error, msg.arg1));
+                                break;
+                        }
+                    }
+                }, this, policy, BASE64_PUBLIC_KEY_DIFFERENT_APP);
+
+        buttonBad = findViewById(R.id.buttonBad);
+        buttonBad.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+
+                buttonBad.setEnabled(false);
+                mBadChecker.checkAccess();
             }
         });
     }
 
-    private class BadKeyLicenceCheckerCallback implements LicenseCheckerCallback {
-        private final Logger LOGGER = LoggerFactory.getLogger(BadKeyLicenceCheckerCallback.class);
-        @Override
-        public void allow(int policyReason) {
-            LOGGER.debug("allow({})", policyReason);
-            if (isFinishing()) {
-                // Don't update UI if Activity is finishing.
-                return;
-            }
-            // Should allow user access.
-            displayResult(mStatusTextBad, mStatusProgressBad, getString(R.string.allow), Color.GREEN);
-        }
-
-        @Override
-        public void dontAllow(int policyReason) {
-            LOGGER.debug("dontAllow({})", policyReason);
-            if (isFinishing()) {
-                // Don't update UI if Activity is finishing.
-                return;
-            }
-            displayResult(mStatusTextBad, mStatusProgressBad, getString(R.string.dont_allow), Color.RED);
-        }
-
-        @Override
-        public void applicationError(int errorCode) {
-            LOGGER.debug("applicationError({})", errorCode);
-            if (isFinishing()) {
-                // Don't update UI if Activity is finishing.
-                return;
-            }
-            // This is a polite way of saying the developer made a mistake
-            // while setting up or calling the license checker library.
-            // Please examine the error code and fix the error.
-            String result = getResult(errorCode);
-            displayResult(mStatusTextBad, mStatusProgressBad, result, getColor(errorCode));
-        }
-    }
-
-    private class FakeLicenseCheckerCallback implements  LicenseCheckerCallback {
-        private final Logger LOGGER = LoggerFactory.getLogger(FakeLicenseCheckerCallback.class);
-        @Override
-        public void allow(int policyReason) {
-            LOGGER.debug("allow({})", policyReason);
-            if (isFinishing()) {
-                // Don't update UI if Activity is finishing.
-                return;
-            }
-            // Should allow user access.
-            displayResult(mStatusTextFake, mStatusProgressFake, getString(R.string.allow), Color.GREEN);
-        }
-
-        @Override
-        public void dontAllow(int policyReason) {
-            LOGGER.debug("dontAllow({})", policyReason);
-            if (isFinishing()) {
-                // Don't update UI if Activity is finishing.
-                return;
-            }
-            displayResult(mStatusTextFake, mStatusProgressFake, getString(R.string.dont_allow), Color.RED);
-        }
-
-        @Override
-        public void applicationError(int errorCode) {
-            LOGGER.debug("applicationError({})", errorCode);
-            if (isFinishing()) {
-                // Don't update UI if Activity is finishing.
-                return;
-            }
-            // This is a polite way of saying the developer made a mistake
-            // while setting up or calling the license checker library.
-            // Please examine the error code and fix the error.
-            String result = getResult(errorCode);
-            displayResult(mStatusTextFake, mStatusProgressFake, result, getColor(errorCode));
-        }
-    }
-
-    private class MyLicenseCheckerCallback implements LicenseCheckerCallback {
-        public void allow(int policyReason) {
-            if (isFinishing()) {
-                // Don't update UI if Activity is finishing.
-                return;
-            }
-            // Should allow user access.
-            displayResult(mStatusText, mStatusProgress, getString(R.string.allow), Color.GREEN);
-        }
-
-        public void dontAllow(int policyReason) {
-            if (isFinishing()) {
-                // Don't update UI if Activity is finishing.
-                return;
-            }
-            displayResult(mStatusText, mStatusProgress, getString(R.string.dont_allow), Color.RED);
-            // Should not allow access. In most cases, the app should assume
-            // the user has access unless it encounters this. If it does,
-            // the app should inform the user of their unlicensed ways
-            // and then either shut down the app or limit the user to a
-            // restricted set of features.
-            // In this example, we show a dialog that takes the user to Market.
-            // If the reason for the lack of license is that the service is
-            // unavailable or there is another problem, we display a
-            // retry button on the dialog and a different message.
-        }
-
-        public void applicationError(int errorCode) {
-            if (isFinishing()) {
-                // Don't update UI if Activity is finishing.
-                return;
-            }
-            // This is a polite way of saying the developer made a mistake
-            // while setting up or calling the license checker library.
-            // Please examine the error code and fix the error.
-            String result = getResult(errorCode);
-            displayResult(mStatusText, mStatusProgress, result, getColor(errorCode));
-        }
-
-
-    }
-
-    private int getColor(int errorCode) {
-        int color = Color.BLACK;
-        switch(errorCode) {
-            case ERROR_INVALID_PACKAGE_NAME:
-            case ERROR_NON_MATCHING_UID:
-            case ERROR_CHECK_IN_PROGRESS:
-            case ERROR_INVALID_PUBLIC_KEY:
-            case ERROR_MISSING_PERMISSION:
-                break;
-            case ERROR_NOT_MARKET_MANAGED:
-                color = Color.parseColor("#FF9900");
-                break;
-        }
-
-        return color;
-    }
-
-    private String getResult(int errorCode) {
-
+    private String errorName(int errorCode) {
         switch(errorCode) {
             case ERROR_INVALID_PACKAGE_NAME:
                 return String.format(getString(R.string.error_invalid_package_name), errorCode);

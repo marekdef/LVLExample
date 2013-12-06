@@ -27,13 +27,14 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:id="@+id/progressBar"
-            android:indeterminate="false" />
+            android:indeterminate="false"
+            android:visibility="gone" />
 
-        <TextView
-            style="@android:style/TextAppearance.Large"
+        <Button
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Normal licence" />
+            android:text="Normal licence"
+            android:id="@+id/buttonNormal" />
 
 
         <TextView
@@ -53,20 +54,22 @@
             style="?android:attr/progressBarStyleSmall"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:id="@+id/progressBar_fake" />
+            android:id="@+id/progressBar_fake"
+            android:visibility="gone" />
 
-        <TextView
-            style="@android:style/TextAppearance.Large"
+        <Button
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Fake licence" />
+            android:text="Fake licence"
+            android:id="@+id/buttonFake" />
 
 
         <TextView
             android:id="@+id/status_text_fake"
             style="@android:style/TextAppearance.Large"
             android:layout_width="wrap_content"
-            android:layout_height="wrap_content" />
+            android:layout_height="wrap_content"
+        />
 
     </LinearLayout>
 
@@ -79,13 +82,14 @@
             style="?android:attr/progressBarStyleSmall"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:id="@+id/progressBar_bad" />
+            android:id="@+id/progressBar_bad"
+            android:visibility="gone" />
 
-        <TextView
-            style="@android:style/TextAppearance.Large"
+        <Button
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Bad key licence" />
+            android:text="Bad key licence"
+            android:id="@+id/buttonBad" />
 
 
         <TextView
@@ -99,14 +103,9 @@
     <TextView
         android:id="@+id/status_text_fake2"
         style="@android:style/TextAppearance.Large"
+        android:singleLine="false"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content" />
 
-
-    <Button
-        android:id="@+id/check_license_button"
-        android:layout_width="fill_parent"
-        android:layout_height="wrap_content"
-        android:text="@string/check_license" />
 </LinearLayout>
 
